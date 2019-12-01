@@ -67,17 +67,14 @@ def AxisAngle(A):
     for i in range(3):
         px[i] /= koef
 
-    print("p:")
-    print(px)
 
     uV = Apom[ii]
     uVPrim = A.dot(uV)
     phi = math.acos((uV[0]*uVPrim[0]+uV[1]*uVPrim[1]+uV[2]*uVPrim[2])/(math.sqrt(uV[0]**2+uV[1]**2+uV[2]**2)*(math.sqrt(uVPrim[0]**2+uVPrim[1]**2+uVPrim[2]**2))))
-    print("phi: ")
-    print(phi)
 
-    return (px, phi)
-
+    print("(p, alpha) = ", end=" ")
+    print("({}, {})".format(px, phi))
+    return px, phi
 
 def Rodrigez(px,phi):
 
@@ -88,14 +85,11 @@ def Rodrigez(px,phi):
     px = px.reshape(3,1)
     pt = px.transpose()
     ppt = px.dot(pt)
-    # print("ppt")
-    # print(ppt)
     cos = math.cos(phi) * (np.identity(3) - ppt)
     pcross =math.sin(phi) * (np.array( [[0,-px[2][0],px[1][0]],[px[2][0],0,-px[0][0]],[-px[1][0],px[0][0],0]]))
-    print("Pkrs")
-    print(pcross/math.sin(phi))
     Rp = ppt + cos + pcross
-    print("Rp")
+
+    print("Matrix Aprim: ")
     print(Rp)
 
     return Rp
@@ -112,21 +106,87 @@ def A2Euler(A):
         print("Matrix is not orthogonal!")
         sys.exit(1)
 
-    if(A[2][0] != 1):
-        teta = math.asin(-A[2][0])
-        psi = math.atan2(A[1][0],A[0][0])
-        phi = math.atan2(A[2][1],A[2][2])
-        print("teta: ", teta)
-        print("phi: ", phi)
-        print("psi: ", psi)
-    # else if(A[2][0] == -1):
-    #     teta = math.sin(math.pi/2)
-    #     phi = 0
+    phi = 0
+    teta = 0
+    psi = 0
+
+    if A[2][0] < 1:
+        # jedinstveno resenje
+        if A[2][0] > -1:
+            psi = math.atan2(A[1][0], A[0][0])
+            teta = math.asin(-A[2][0])
+            phi = math.atan2(A[2][1], A[2][2])
+        else:
+            psi = math.atan2(A[2][1], A[1][1])
+            teta = math.pi / 2
+            phi = 0
+    else:
+        psi = math.atan2(A[2][1], A[1][1])
+        teta = - math.pi / 2
+        phi = 0
+
+    print ("(phi, teta, psi) = ", end=" ")
+    print(phi, teta, psi)
+    return phi, teta, psi
+
+def AxisAngle2Q(p,phi):
+    w = math.cos(phi/2)
+
+    koef = math.sqrt(p[0] ** 2 + p[1] ** 2 + p[2] ** 2)
+    for i in range(3):
+        p[i] /= koef
+        p[i] *= math.sin(phi/2)
+
+    q = np.array([p[0], p[1], p[2], w])
+
+    print("q = {}".format(q))
+    return q
+
+def Q2AngleAxis(q):
+    koef = math.sqrt(q[0] ** 2 + q[1] ** 2 + q[2] ** 2 + q[3]**2)
+    for i in range(4):
+        q[i] /= koef
+
+    if(q[3] < 0):
+        q = [-q[i] for i in range(4)]
+    phi = 2 * math.acos(q[3])
+    if abs(q[3]) == 1:
+        p = np.array([1,0,0])
+
+    else:
+        p = np.array([q[i] for i in range(3)])
+        koef = math.sqrt(p[0] ** 2 + p[1] ** 2 + p[2] ** 2)
+        for i in range(3):
+            p[i] /= koef
+
+    print("(pprim, alphaprim) = ({} {})".format(p, phi))
+    return p, phi
 
 
 def main():
-    (px,phi) = AxisAngle(Euler2A(-math.atan(1/4),-math.asin(8/9),math.atan(4)))
-    A2Euler(Rodrigez(px,phi))
+    print("Euler2A(-atan(1/4), -asin(8/9), atan(4)): ")
+    A = Euler2A(-math.atan(1/4), -math.asin(8/9), math.atan(4))
+    print("---------------------------------------------------------------------------------------------")
+    print("AxisAngle(A): ")
+    (p, alpha) = AxisAngle(A)
+    print("---------------------------------------------------------------------------------------------")
+
+    print("Rodrigez(p, alpha): ")
+    Aprim = Rodrigez(p, alpha)
+    print("---------------------------------------------------------------------------------------------")
+    print("A2Euler(Aprim): ")
+    (phi, teta, psi) = A2Euler(Aprim)
+    print("---------------------------------------------------------------------------------------------")
+    print("AxisAngle2Q(p, alpha)")
+    q = AxisAngle2Q(p, alpha)
+    print("---------------------------------------------------------------------------------------------")
+    print("Q2AngleAxis(q): ")
+    (pprim, alphaprim) = Q2AngleAxis(q)
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
